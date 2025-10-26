@@ -70,24 +70,32 @@ class Client extends Entity
     }
 
     /**
-     * Getter for redirect_uris that converts null to empty array
+     * Getter for redirect_uris that converts null or JSON string to array
      *
-     * @param array|null $value Array from JSON type or null
+     * @param array|string|null $value Array from JSON type, JSON string, or null
      * @return array Array of redirect URIs
      */
     protected function _getRedirectUris($value): array
     {
+        if (is_string($value)) {
+            return json_decode($value, true) ?: [];
+        }
+
         return $value ?? [];
     }
 
     /**
-     * Getter for grant_types that converts null to empty array
+     * Getter for grant_types that converts null or JSON string to array
      *
-     * @param array|null $value Array from JSON type or null
+     * @param array|string|null $value Array from JSON type, JSON string, or null
      * @return array Array of grant types
      */
     protected function _getGrantTypes($value): array
     {
+        if (is_string($value)) {
+            return json_decode($value, true) ?: [];
+        }
+
         return $value ?? [];
     }
 }
