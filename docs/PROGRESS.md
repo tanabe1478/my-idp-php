@@ -311,8 +311,21 @@
   - 要求スコープ表示
   - 承認/拒否ボタン
 
+**統合テスト完成！**
+- ✅ OauthControllerTest実装（6統合テスト）
+  - testAuthorizeShowsConsentScreen - 同意画面表示確認
+  - testAuthorizeIsAccessible - エンドポイントアクセス確認
+  - testAuthorizeWithInvalidClientId - エラーハンドリング確認
+  - testTokenEndpointRequiresPost - POST必須確認
+  - testTokenEndpointWithMissingParameters - パラメータ検証
+  - testTokenEndpointWithInvalidGrantType - グラントタイプ検証
+- ✅ 主要な修正
+  - loadModel() → fetchTable()への移行（CakePHP 5対応）
+  - CSRF保護のOAuthエンドポイント除外設定
+  - ClientsFixtureにテスト用リダイレクトURI追加
+
 **全テスト成功！**
-- 合計テスト数: 69テスト、183アサーション、全成功（1スキップ）✅
+- 合計テスト数: 75テスト、198アサーション、全成功（1スキップ）✅
 - リグレッションなし
 
 **実装完了したOAuth2フロー**:
@@ -323,6 +336,28 @@
 5. クライアントアプリにリダイレクト（認可コード付き）
 6. クライアントがトークンエンドポイントで認可コード交換
 7. アクセストークン（JWT）とIDトークン発行
+
+**フェーズ2完了！** 🎉
+
+---
+
+### フェーズ3: トークン管理 🔄
+
+**ステータス**: 進行中（2025-10-27開始）
+
+**目標**:
+- リフレッシュトークン実装
+- トークン取り消し
+- トークンイントロスペクション
+
+**タスク**:
+- [ ] refresh_tokensテーブル作成
+- [ ] RefreshToken Entity/Table実装
+- [ ] リフレッシュトークン生成・保存
+- [ ] refresh_tokenグラントタイプ実装
+- [ ] トークンローテーション実装
+- [ ] トークン取り消しエンドポイント
+- [ ] イントロスペクションエンドポイント
 
 ---
 

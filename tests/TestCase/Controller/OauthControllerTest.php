@@ -26,6 +26,7 @@ class OauthControllerTest extends TestCase
         'app.Scopes',
         'app.ClientsScopes',
         'app.AuthorizationCodes',
+        'app.RefreshTokens',
     ];
 
     /**
@@ -166,5 +167,141 @@ class OauthControllerTest extends TestCase
 
         $response = json_decode((string)$this->_response->getBody(), true);
         $this->assertEquals('unsupported_grant_type', $response['error']);
+    }
+
+    /**
+     * Test successful token exchange includes refresh token
+     *
+     * @return void
+     */
+    public function testSuccessfulTokenExchangeIncludesRefreshToken(): void
+    {
+        $this->post('/oauth/token', [
+            'grant_type' => 'authorization_code',
+            'code' => 'test_auth_code_1',
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+        ]);
+
+        $this->assertResponseOk();
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+
+        // Assert access token fields
+        $this->assertArrayHasKey('access_token', $response);
+        $this->assertArrayHasKey('token_type', $response);
+        $this->assertArrayHasKey('expires_in', $response);
+        $this->assertEquals('Bearer', $response['token_type']);
+        $this->assertEquals(3600, $response['expires_in']);
+
+        // Assert refresh token is included
+        $this->assertArrayHasKey('refresh_token', $response);
+        $this->assertNotEmpty($response['refresh_token']);
+
+        // Assert ID token is included (openid scope)
+        $this->assertArrayHasKey('id_token', $response);
+    }
+
+    /**
+     * Test refresh_token grant type exchanges refresh token for new access token
+     *
+     * @return void
+     */
+    public function testRefreshTokenGrantTypeExchangesForNewAccessToken(): void
+    {
+        $this->post('/oauth/token', [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => 'test_refresh_token_1',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+        ]);
+
+        $this->assertResponseOk();
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+
+        // Assert new access token is issued
+        $this->assertArrayHasKey('access_token', $response);
+        $this->assertArrayHasKey('token_type', $response);
+        $this->assertArrayHasKey('expires_in', $response);
+        $this->assertEquals('Bearer', $response['token_type']);
+        $this->assertEquals(3600, $response['expires_in']);
+
+        // Assert new refresh token is issued (token rotation)
+        $this->assertArrayHasKey('refresh_token', $response);
+        $this->assertNotEmpty($response['refresh_token']);
+
+        // New refresh token should be different from the old one
+        $this->assertNotEquals('test_refresh_token_1', $response['refresh_token']);
+
+        // Assert scopes are maintained
+        $this->assertArrayHasKey('scope', $response);
+        $this->assertEquals('openid profile email', $response['scope']);
+    }
+
+    /**
+     * Test refresh_token grant type with invalid refresh token
+     *
+     * @return void
+     */
+    public function testRefreshTokenGrantTypeWithInvalidToken(): void
+    {
+        $this->post('/oauth/token', [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => 'invalid_refresh_token',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+        ]);
+
+        $this->assertResponseCode(400);
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertEquals('invalid_grant', $response['error']);
+    }
+
+    /**
+     * Test refresh_token grant type with expired refresh token
+     *
+     * @return void
+     */
+    public function testRefreshTokenGrantTypeWithExpiredToken(): void
+    {
+        $this->post('/oauth/token', [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => 'test_refresh_token_2_expired',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+        ]);
+
+        $this->assertResponseCode(400);
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertEquals('invalid_grant', $response['error']);
+    }
+
+    /**
+     * Test refresh_token grant type with revoked refresh token
+     *
+     * @return void
+     */
+    public function testRefreshTokenGrantTypeWithRevokedToken(): void
+    {
+        $this->post('/oauth/token', [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => 'test_refresh_token_3_revoked',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+        ]);
+
+        $this->assertResponseCode(400);
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertEquals('invalid_grant', $response['error']);
     }
 }

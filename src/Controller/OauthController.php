@@ -13,6 +13,7 @@ use Cake\Http\Exception\UnauthorizedException;
  *
  * @property \App\Model\Table\ClientsTable $Clients
  * @property \App\Model\Table\AuthorizationCodesTable $AuthorizationCodes
+ * @property \App\Model\Table\RefreshTokensTable $RefreshTokens
  */
 class OauthController extends AppController
 {
@@ -28,6 +29,7 @@ class OauthController extends AppController
         // Load required models using CakePHP 5 fetchTable()
         $this->Clients = $this->fetchTable('Clients');
         $this->AuthorizationCodes = $this->fetchTable('AuthorizationCodes');
+        $this->RefreshTokens = $this->fetchTable('RefreshTokens');
 
         // Authorization endpoint is public (handles auth internally)
         // Token endpoint is also public (uses client authentication)
@@ -216,13 +218,11 @@ class OauthController extends AppController
 
         // Get request parameters
         $grantType = $this->request->getData('grant_type');
-        $code = $this->request->getData('code');
-        $redirectUri = $this->request->getData('redirect_uri');
         $clientId = $this->request->getData('client_id');
         $clientSecret = $this->request->getData('client_secret');
 
         // Validate required parameters
-        if (!$grantType || !$code || !$redirectUri || !$clientId) {
+        if (!$grantType || !$clientId) {
             $this->set([
                 'error' => 'invalid_request',
                 'error_description' => 'Missing required parameters',
@@ -233,11 +233,38 @@ class OauthController extends AppController
             return;
         }
 
-        // Only support authorization_code grant type for now
-        if ($grantType !== 'authorization_code') {
+        // Route to appropriate grant type handler
+        if ($grantType === 'authorization_code') {
+            $this->_handleAuthorizationCodeGrant($clientId, $clientSecret);
+        } elseif ($grantType === 'refresh_token') {
+            $this->_handleRefreshTokenGrant($clientId, $clientSecret);
+        } else {
             $this->set([
                 'error' => 'unsupported_grant_type',
-                'error_description' => 'Only authorization_code grant type is supported',
+                'error_description' => 'Unsupported grant type',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(400);
+        }
+    }
+
+    /**
+     * Handle authorization_code grant type
+     *
+     * @param string $clientId Client ID
+     * @param string|null $clientSecret Client secret
+     * @return void
+     */
+    protected function _handleAuthorizationCodeGrant(string $clientId, ?string $clientSecret): void
+    {
+        $code = $this->request->getData('code');
+        $redirectUri = $this->request->getData('redirect_uri');
+
+        // Validate required parameters for authorization_code grant
+        if (!$code || !$redirectUri) {
+            $this->set([
+                'error' => 'invalid_request',
+                'error_description' => 'Missing required parameters',
             ]);
             $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
             $this->response = $this->response->withStatus(400);
@@ -343,6 +370,144 @@ class OauthController extends AppController
             $response['id_token'] = $idToken;
         }
 
+        // Generate and save refresh token
+        $refreshTokenString = $this->generateRefreshToken();
+        $refreshTokenExpiry = new \DateTime('+30 days'); // Refresh tokens last 30 days
+
+        $refreshToken = $this->RefreshTokens->newEntity([
+            'token' => $refreshTokenString,
+            'client_id' => $client->id,
+            'user_id' => $authCode->user_id,
+            'scopes' => $authCode->scopes,
+            'expires_at' => $refreshTokenExpiry,
+            'is_revoked' => false,
+        ]);
+
+        if (!$this->RefreshTokens->save($refreshToken)) {
+            throw new \RuntimeException('Failed to save refresh token');
+        }
+
+        $response['refresh_token'] = $refreshTokenString;
+
+        $this->set($response);
+        $this->viewBuilder()->setOption('serialize', array_keys($response));
+    }
+
+    /**
+     * Handle refresh_token grant type
+     *
+     * @param string $clientId Client ID
+     * @param string|null $clientSecret Client secret
+     * @return void
+     */
+    protected function _handleRefreshTokenGrant(string $clientId, ?string $clientSecret): void
+    {
+        $refreshTokenString = $this->request->getData('refresh_token');
+
+        // Validate required parameters for refresh_token grant
+        if (!$refreshTokenString) {
+            $this->set([
+                'error' => 'invalid_request',
+                'error_description' => 'Missing refresh_token parameter',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(400);
+
+            return;
+        }
+
+        // Load ClientAuthenticationService
+        $clientAuth = new \App\Service\ClientAuthenticationService($this->Clients);
+
+        // Authenticate client
+        $client = $clientAuth->authenticate($clientId, $clientSecret);
+        if (!$client) {
+            $this->set([
+                'error' => 'invalid_client',
+                'error_description' => 'Client authentication failed',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(401);
+
+            return;
+        }
+
+        // Find refresh token
+        $refreshToken = $this->RefreshTokens->findByToken($refreshTokenString);
+        if (!$refreshToken) {
+            $this->set([
+                'error' => 'invalid_grant',
+                'error_description' => 'Refresh token not found',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(400);
+
+            return;
+        }
+
+        // Validate refresh token
+        if ($refreshToken->client_id !== $client->id) {
+            $this->set([
+                'error' => 'invalid_grant',
+                'error_description' => 'Refresh token was issued to another client',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(400);
+
+            return;
+        }
+
+        if (!$refreshToken->isValid()) {
+            $this->set([
+                'error' => 'invalid_grant',
+                'error_description' => 'Refresh token is expired or revoked',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(400);
+
+            return;
+        }
+
+        // Generate new access token
+        $jwtService = new \App\Service\JwtService();
+
+        $accessToken = $jwtService->generateAccessToken(
+            $client->client_id,
+            $refreshToken->user_id,
+            $refreshToken->scopes,
+            3600 // 1 hour
+        );
+
+        $response = [
+            'access_token' => $accessToken,
+            'token_type' => 'Bearer',
+            'expires_in' => 3600,
+            'scope' => implode(' ', $refreshToken->scopes),
+        ];
+
+        // Token rotation: Generate new refresh token and revoke old one
+        $newRefreshTokenString = $this->generateRefreshToken();
+        $newRefreshTokenExpiry = new \DateTime('+30 days');
+
+        $newRefreshToken = $this->RefreshTokens->newEntity([
+            'token' => $newRefreshTokenString,
+            'client_id' => $client->id,
+            'user_id' => $refreshToken->user_id,
+            'scopes' => $refreshToken->scopes,
+            'expires_at' => $newRefreshTokenExpiry,
+            'is_revoked' => false,
+        ]);
+
+        if (!$this->RefreshTokens->save($newRefreshToken)) {
+            throw new \RuntimeException('Failed to save new refresh token');
+        }
+
+        // Revoke the old refresh token
+        $refreshToken->is_revoked = true;
+        $this->RefreshTokens->save($refreshToken);
+
+        $response['refresh_token'] = $newRefreshTokenString;
+
         $this->set($response);
         $this->viewBuilder()->setOption('serialize', array_keys($response));
     }
@@ -353,6 +518,16 @@ class OauthController extends AppController
      * @return string
      */
     protected function generateAuthorizationCode(): string
+    {
+        return bin2hex(random_bytes(32)); // 64 character hex string
+    }
+
+    /**
+     * Generate a cryptographically secure refresh token
+     *
+     * @return string
+     */
+    protected function generateRefreshToken(): string
     {
         return bin2hex(random_bytes(32)); // 64 character hex string
     }
