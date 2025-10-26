@@ -70,54 +70,24 @@ class Client extends Entity
     }
 
     /**
-     * Getter for redirect_uris that converts JSON to array
+     * Getter for redirect_uris that converts null to empty array
      *
-     * @param string|null $value JSON string from database
+     * @param array|null $value Array from JSON type or null
      * @return array Array of redirect URIs
      */
-    protected function _getRedirectUris(?string $value): array
+    protected function _getRedirectUris($value): array
     {
-        return $value ? json_decode($value, true) : [];
+        return $value ?? [];
     }
 
     /**
-     * Setter for redirect_uris that converts array to JSON
+     * Getter for grant_types that converts null to empty array
      *
-     * @param array|null $value Array of redirect URIs or null
-     * @return string|null JSON string for database storage or null
-     */
-    protected function _setRedirectUris(?array $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        return json_encode($value);
-    }
-
-    /**
-     * Getter for grant_types that converts JSON to array
-     *
-     * @param string|null $value JSON string from database
+     * @param array|null $value Array from JSON type or null
      * @return array Array of grant types
      */
-    protected function _getGrantTypes(?string $value): array
+    protected function _getGrantTypes($value): array
     {
-        return $value ? json_decode($value, true) : [];
-    }
-
-    /**
-     * Setter for grant_types that converts array to JSON
-     *
-     * @param array|null $value Array of grant types or null
-     * @return string|null JSON string for database storage or null
-     */
-    protected function _setGrantTypes(?array $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        return json_encode($value);
+        return $value ?? [];
     }
 }
