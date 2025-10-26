@@ -13,7 +13,7 @@
 
 ### フェーズ1: 基盤 🔄
 
-**ステータス**: 未開始
+**ステータス**: 進行中
 
 **目標**:
 - クライアント管理（登録、保存、検証）
@@ -21,10 +21,13 @@
 - スコープ管理
 
 **タスク**:
-- [ ] データベーススキーマ設計
-- [ ] Clientエンティティとテーブル作成
+- [x] データベーススキーマ設計
+- [x] 初期マイグレーション実装（clients, scopes, clients_scopes, users）
+- [x] Clientエンティティ作成（11テスト、全成功）
+- [x] ClientsTable作成（11テスト、全成功）
+- [x] Scopeエンティティ作成
+- [x] ScopesTable作成
 - [ ] Userエンティティとテーブル作成
-- [ ] Scopeエンティティとテーブル作成
 - [ ] クライアント登録機能
 - [ ] クライアント認証機能
 - [ ] ユーザー認証機能
@@ -123,7 +126,7 @@
 - [x] PostgreSQLセットアップ
 - [x] データベース作成（idp_development, idp_test）
 - [x] データベース接続確認
-- [ ] 初期マイグレーション
+- [x] 初期マイグレーション（clients, scopes, clients_scopes, users）
 
 ---
 
@@ -165,15 +168,36 @@
 - ✅ CakePHP設定ファイル更新（config/app_local.php）
 - ✅ データベース接続確認
 
+#### フェーズ1実装開始（2025-10-27）
+- ✅ データベーススキーマ設計完了
+- ✅ 初期マイグレーション実装
+  - clients テーブル（UUID主キー、JSON型フィールド）
+  - scopes テーブル
+  - clients_scopes 中間テーブル
+  - users テーブル
+- ✅ Client Entity実装（TDD: Red-Green-Refactor）
+  - bcryptパスワードハッシング（cost=12）
+  - JSON配列変換（redirect_uris, grant_types）
+  - hidden fieldsサポート
+  - 11テスト全成功
+- ✅ ClientsTable実装（TDD: Red-Green-Refactor）
+  - バリデーションルール（required, maxLength, unique）
+  - belongsToMany Scopesアソシエーション
+  - findByClientIdカスタムファインダー
+  - JSON型設定（redirect_uris, grant_types）
+  - 11テスト全成功
+- ✅ Scope Entity実装
+- ✅ ScopesTable実装
+- ✅ テストフィクスチャ作成（Clients, Scopes, ClientsScopes）
+
 ---
 
 ## 次のステップ
 
-1. フェーズ1の設計を開始
-   - データベーススキーマ設計
-   - Client、User、Scopeエンティティ設計
-2. 初期マイグレーション実装
-3. フェーズ1の実装開始（クライアント管理、ユーザー認証、スコープ管理）
+1. User Entity・UsersTable実装（TDD）
+2. ユーザー認証機能実装
+3. クライアント登録機能実装
+4. フェーズ1完了後、フェーズ2（認可コードフロー）に移行
 
 ---
 
