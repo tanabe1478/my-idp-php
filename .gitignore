@@ -1,0 +1,64 @@
+# CakePHP specific files
+/vendor/*
+/config/app_local.php
+/config/.env
+/logs/*
+!/logs/empty
+/tmp/*
+!/tmp/empty
+/webroot/uploads/*
+
+# Composer
+composer.phar
+/vendor/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.buildpath
+.settings
+*.tmproj
+*.sublime-project
+*.sublime-workspace
+.phpunit.result.cache
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# PHPUnit
+/phpunit.xml
+/.phpunit.cache
+
+# Node
+/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Coverage reports
+/coverage/
+/clover.xml
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Keep these project-specific files
+!.tool-versions
+!.asdf-php-configure-options
+!.claude/
+!docs/
