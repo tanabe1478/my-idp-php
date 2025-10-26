@@ -4,8 +4,8 @@
 
 - **プロジェクト名**: OAuth2/OpenID Connect 認可サーバー
 - **開始日**: 2024-10-24
-- **現在のフェーズ**: セットアップ
-- **最終更新**: 2025-10-26
+- **現在のフェーズ**: フェーズ1（基盤 - モデル層完了）
+- **最終更新**: 2025-10-27
 
 ---
 
@@ -27,7 +27,8 @@
 - [x] ClientsTable作成（11テスト、全成功）
 - [x] Scopeエンティティ作成
 - [x] ScopesTable作成
-- [ ] Userエンティティとテーブル作成
+- [x] Userエンティティ作成（14テスト、全成功）
+- [x] UsersTable作成（14テスト、全成功）
 - [ ] クライアント登録機能
 - [ ] クライアント認証機能
 - [ ] ユーザー認証機能
@@ -190,13 +191,31 @@
 - ✅ ScopesTable実装
 - ✅ テストフィクスチャ作成（Clients, Scopes, ClientsScopes）
 
+#### User実装完了（2025-10-27）
+- ✅ User Entity実装（TDD: Red-Green-Refactor）
+  - bcryptパスワードハッシング（cost=12）
+  - password → password_hashフィールドマッピング
+  - virtualフィールドとhidden fieldsサポート
+  - 14テスト全成功
+- ✅ UsersTable実装（TDD: Red-Green-Refactor）
+  - バリデーションルール（required, maxLength, unique, email形式）
+  - buildRules（username, emailユニーク制約）
+  - findByUsername()カスタムファインダー
+  - findByEmail()カスタムファインダー
+  - Timestampビヘイビア
+  - 14テスト全成功
+- ✅ テストフィクスチャ作成（Users）
+
+**フェーズ1モデル層実装完了！**
+- 合計テスト数: 36テスト、91アサーション、全成功 ✅
+
 ---
 
 ## 次のステップ
 
-1. User Entity・UsersTable実装（TDD）
-2. ユーザー認証機能実装
-3. クライアント登録機能実装
+1. クライアント登録機能実装
+2. クライアント認証機能実装
+3. ユーザー認証機能実装
 4. フェーズ1完了後、フェーズ2（認可コードフロー）に移行
 
 ---
