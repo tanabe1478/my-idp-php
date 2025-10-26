@@ -23,7 +23,7 @@ class ClientsFixture extends TestFixture
                 'client_id' => 'test_client_1',
                 'client_secret' => '$2y$12$YxkSqRw47o6UNhqX1fiFt.e.vi36reQa1dSep5MkgrLWxHgmeSO8u', // hashed 'secret'
                 'name' => 'Test Client 1',
-                'redirect_uris' => '["https://example.com/callback"]',
+                'redirect_uris' => '["https://example.com/callback","http://localhost:3000/callback"]',
                 'grant_types' => '["authorization_code","refresh_token"]',
                 'is_confidential' => true,
                 'is_active' => true,
