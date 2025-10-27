@@ -304,4 +304,79 @@ class OauthControllerTest extends TestCase
         $response = json_decode((string)$this->_response->getBody(), true);
         $this->assertEquals('invalid_grant', $response['error']);
     }
+
+    /**
+     * Test UserInfo endpoint returns user information
+     *
+     * @return void
+     */
+    public function testUserInfoEndpointReturnsUserInformation(): void
+    {
+        // First, get an access token
+        $this->post('/oauth/token', [
+            'grant_type' => 'authorization_code',
+            'code' => 'test_auth_code_1',
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+        ]);
+
+        $this->assertResponseOk();
+        $tokenResponse = json_decode((string)$this->_response->getBody(), true);
+        $this->assertArrayHasKey('access_token', $tokenResponse);
+
+        $accessToken = $tokenResponse['access_token'];
+
+        // Now, call UserInfo endpoint with the access token
+        $this->get('/oauth/userinfo?access_token=' . urlencode($accessToken));
+        $this->assertResponseOk();
+        $this->assertContentType('application/json');
+
+        $userInfo = json_decode((string)$this->_response->getBody(), true);
+
+        // Assert basic claims
+        $this->assertArrayHasKey('sub', $userInfo);
+        $this->assertEquals('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', $userInfo['sub']);
+
+        // Assert profile scope claims
+        $this->assertArrayHasKey('preferred_username', $userInfo);
+        $this->assertEquals('testuser1', $userInfo['preferred_username']);
+
+        // Assert email scope claims
+        $this->assertArrayHasKey('email', $userInfo);
+        $this->assertEquals('testuser1@example.com', $userInfo['email']);
+        $this->assertArrayHasKey('email_verified', $userInfo);
+    }
+
+    /**
+     * Test UserInfo endpoint requires authentication
+     *
+     * @return void
+     */
+    public function testUserInfoEndpointRequiresAuthentication(): void
+    {
+        $this->get('/oauth/userinfo');
+
+        $this->assertResponseCode(401);
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertEquals('invalid_token', $response['error']);
+    }
+
+    /**
+     * Test UserInfo endpoint rejects invalid token
+     *
+     * @return void
+     */
+    public function testUserInfoEndpointRejectsInvalidToken(): void
+    {
+        $this->get('/oauth/userinfo?access_token=invalid_token_xyz');
+
+        $this->assertResponseCode(401);
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertEquals('invalid_token', $response['error']);
+    }
 }

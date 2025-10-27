@@ -18,6 +18,13 @@ use Cake\Http\Exception\UnauthorizedException;
 class OauthController extends AppController
 {
     /**
+     * JWT Service instance
+     *
+     * @var \App\Service\JwtService
+     */
+    protected $jwtService;
+
+    /**
      * Initialize method
      *
      * @return void
@@ -31,8 +38,13 @@ class OauthController extends AppController
         $this->AuthorizationCodes = $this->fetchTable('AuthorizationCodes');
         $this->RefreshTokens = $this->fetchTable('RefreshTokens');
 
+        // Initialize JWT service (uses default secret for now)
+        // TODO: In production, configure this with a persistent secret key
+        $this->jwtService = new \App\Service\JwtService();
+
         // Authorization endpoint is public (handles auth internally)
         // Token endpoint is also public (uses client authentication)
+        // UserInfo endpoint requires Bearer token authentication
         $this->Authentication->allowUnauthenticated(['authorize', 'token']);
     }
 
@@ -340,9 +352,7 @@ class OauthController extends AppController
         $this->AuthorizationCodes->save($authCode);
 
         // Generate JWT tokens
-        $jwtService = new \App\Service\JwtService();
-
-        $accessToken = $jwtService->generateAccessToken(
+        $accessToken = $this->jwtService->generateAccessToken(
             $client->client_id,
             $authCode->user_id,
             $authCode->scopes,
@@ -359,7 +369,7 @@ class OauthController extends AppController
         // Generate ID token if openid scope was requested
         if (in_array('openid', $authCode->scopes)) {
             $user = $authCode->user;
-            $idToken = $jwtService->generateIdToken(
+            $idToken = $this->jwtService->generateIdToken(
                 $client->client_id,
                 $user->id,
                 $user->username,
@@ -469,9 +479,7 @@ class OauthController extends AppController
         }
 
         // Generate new access token
-        $jwtService = new \App\Service\JwtService();
-
-        $accessToken = $jwtService->generateAccessToken(
+        $accessToken = $this->jwtService->generateAccessToken(
             $client->client_id,
             $refreshToken->user_id,
             $refreshToken->scopes,
@@ -523,12 +531,92 @@ class OauthController extends AppController
     }
 
     /**
-     * Generate a cryptographically secure refresh token
+     * UserInfo endpoint (OpenID Connect)
      *
-     * @return string
+     * Returns claims about the authenticated user
+     * GET /oauth/userinfo
+     *
+     * @return void
      */
-    protected function generateRefreshToken(): string
+    public function userinfo()
     {
-        return bin2hex(random_bytes(32)); // 64 character hex string
+        // Set JSON response
+        $this->viewBuilder()->setClassName('Json');
+
+        // Get Bearer token from Authorization header or query parameter
+        $authHeader = $this->request->getHeaderLine('Authorization');
+        $accessToken = null;
+
+        if (!empty($authHeader) && preg_match('/^Bearer\s+(.+)$/i', $authHeader, $matches)) {
+            $accessToken = $matches[1];
+        } elseif ($this->request->getQuery('access_token')) {
+            // Support access_token in query parameter (for testing convenience)
+            $accessToken = $this->request->getQuery('access_token');
+        }
+
+        if (empty($accessToken)) {
+            $this->set([
+                'error' => 'invalid_token',
+                'error_description' => 'Missing or invalid Authorization header',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(401);
+
+            return;
+        }
+
+        // Verify and decode the access token
+        try {
+            $payload = $this->jwtService->verifyToken($accessToken);
+        } catch (\Exception $e) {
+            $this->set([
+                'error' => 'invalid_token',
+                'error_description' => 'Invalid or expired access token',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(401);
+
+            return;
+        }
+
+        // Get user ID from token payload
+        $userId = $payload->sub;
+
+        // Load user from database
+        $Users = $this->fetchTable('Users');
+        $user = $Users->get($userId);
+
+        if (!$user) {
+            $this->set([
+                'error' => 'invalid_token',
+                'error_description' => 'User not found',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(401);
+
+            return;
+        }
+
+        // Parse scopes from token
+        $scopes = isset($payload->scope) ? explode(' ', $payload->scope) : [];
+
+        // Build UserInfo response based on scopes
+        $userInfo = [
+            'sub' => $user->id,
+        ];
+
+        // Add profile claims if profile scope was granted
+        if (in_array('profile', $scopes)) {
+            $userInfo['preferred_username'] = $user->username;
+        }
+
+        // Add email claims if email scope was granted
+        if (in_array('email', $scopes)) {
+            $userInfo['email'] = $user->email;
+            $userInfo['email_verified'] = true;
+        }
+
+        $this->set($userInfo);
+        $this->viewBuilder()->setOption('serialize', array_keys($userInfo));
     }
 }

@@ -40,10 +40,22 @@ class JwtService
      */
     public function __construct(?string $secret = null, ?string $issuer = null)
     {
-        // In production, this should come from configuration
-        // For now, generate a default secret
-        $this->secret = $secret ?? $this->generateSecret();
-        $this->issuer = $issuer ?? 'http://localhost:8765';
+        // Use provided secret, or fall back to configuration
+        if ($secret === null) {
+            // Try to get from environment variable first (most secure)
+            $envSecret = env('JWT_SECRET_KEY');
+            if ($envSecret) {
+                $this->secret = $envSecret;
+            } else {
+                // Fall back to Security.salt for development/testing
+                $configSecret = \Cake\Core\Configure::read('Security.salt');
+                // If no config, generate a random secret (last resort for testing)
+                $this->secret = $configSecret ?: $this->generateSecret();
+            }
+        } else {
+            $this->secret = $secret;
+        }
+        $this->issuer = $issuer ?? env('JWT_ISSUER', 'http://localhost:8765');
     }
 
     /**
