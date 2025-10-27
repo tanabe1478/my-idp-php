@@ -531,6 +531,16 @@ class OauthController extends AppController
     }
 
     /**
+     * Generate a cryptographically secure refresh token
+     *
+     * @return string
+     */
+    protected function generateRefreshToken(): string
+    {
+        return bin2hex(random_bytes(32)); // 64 character hex string
+    }
+
+    /**
      * UserInfo endpoint (OpenID Connect)
      *
      * Returns claims about the authenticated user

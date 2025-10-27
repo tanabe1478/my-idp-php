@@ -38,6 +38,9 @@ class OauthControllerTest extends TestCase
     {
         parent::setUp();
 
+        // Set a consistent Security.salt for JWT token signing/verification in tests
+        \Cake\Core\Configure::write('Security.salt', 'test_security_salt_for_jwt_tokens_do_not_use_in_production');
+
         // OAuth2 uses 'state' parameter for CSRF protection, not CakePHP CSRF tokens
         // So we don't enable CSRF protection for these tests
 
