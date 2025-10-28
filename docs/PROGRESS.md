@@ -378,33 +378,46 @@
 
 **フェーズ3完了！** 🎉
 
-#### フェーズ4: OpenID Connect実装（進行中 - 2025-10-27）
+#### フェーズ4: OpenID Connect実装完了（2025-10-27）
 - ✅ IDトークン生成確認
   - JwtService::generateIdToken()は既に実装済み
   - openidスコープでIDトークンを自動発行
-- ✅ UserInfoエンドポイント実装（部分的）
+- ✅ UserInfoエンドポイント実装
   - GET /oauth/userinfo エンドポイント作成
   - アクセストークン検証（JWT）
   - スコープベースのクレーム返却（sub, preferred_username, email）
   - クエリパラメータとAuthorizationヘッダーの両方をサポート
+  - 3統合テスト全成功
 - ✅ JwtService改善
-  - Security.saltを使用した一貫性のある秘密鍵管理
-  - コントローラーでの共通インスタンス化
-- 🔄 UserInfoエンドポイントテスト（作業中）
-  - 3つのテストケース追加（1つ成功、2つ失敗）
-  - 統合テストでのヘッダー設定方法を調査中
-  - **課題**: 複数リクエスト間でのJWT検証
+  - 環境変数（JWT_SECRET_KEY）からの秘密鍵取得サポート
+  - Security.saltへのフォールバック
+  - テスト環境でのSecurity.salt固定値設定
+  - テスト間でのJWT検証一貫性確保
+- ✅ UserInfoエンドポイントテスト修正
+  - **課題**: 複数リクエスト間でのJWT秘密鍵の不一致
+  - **解決**: テストsetUp()でSecurity.salt固定値設定
+  - generateRefreshToken()メソッド欠落を発見・修正
+  - 3テスト全成功
+- ✅ Discovery documentエンドポイント実装（TDD: Red-Green-Refactor）
+  - GET /.well-known/openid-configuration エンドポイント作成
+  - OpenID Connect Discovery仕様準拠
+  - issuer, authorization_endpoint, token_endpoint, userinfo_endpoint, jwks_uri等を返却
+  - 18アサーション、全成功
+- ✅ JWKSエンドポイント実装（TDD: Red-Green-Refactor）
+  - GET /.well-known/jwks.json エンドポイント作成
+  - RFC 7517（JSON Web Key）準拠
+  - HS256（対称鍵）のため空のkeys配列を返却（仕様準拠）
+  - 5アサーション、全成功
+- ✅ ルーティング追加
+  - /.well-known/openid-configuration → Oauth::discovery
+  - /.well-known/jwks.json → Oauth::jwks
+  - 両エンドポイント公開アクセス可能
 
-**現在の状況**:
-- 実装: UserInfoエンドポイントのコード完成
-- テスト: 98テスト中3つ失敗（全てUserInfo関連の新規テスト）
-- 問題: 統合テストでの複数リクエスト処理とJWT秘密鍵の一貫性
+**全テスト成功！**
+- 合計テスト数: 100テスト、297アサーション、全成功（1スキップ）✅
+- リグレッションなし
 
-**次のアクション**:
-1. UserInfoテストの修正（Authorizationヘッダー設定）
-2. 全テスト通過確認
-3. Discoveryドキュメントエンドポイント実装
-4. JWKSエンドポイント実装
+**フェーズ4完了！** 🎉
 
 ---
 
@@ -435,8 +448,9 @@
 3. ~~ユーザー認証機能実装~~ ✅ **完了**
 4. ~~フェーズ2（認可コードフロー）~~ ✅ **完了**
 5. ~~フェーズ3（トークン管理）~~ ✅ **完了**
-6. フェーズ4（OpenID Connect - IDトークン、UserInfo、Discovery）に移行 🚀
-7. 統合テストの改善（将来のタスク）
+6. ~~フェーズ4（OpenID Connect）~~ ✅ **完了**
+7. フェーズ5（追加フロー - Client Credentials, PKCE, 動的登録）に移行 🚀
+8. 統合テストの改善（将来のタスク）
 
 ---
 

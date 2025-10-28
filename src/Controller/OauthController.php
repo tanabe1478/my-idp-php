@@ -45,7 +45,8 @@ class OauthController extends AppController
         // Authorization endpoint is public (handles auth internally)
         // Token endpoint is also public (uses client authentication)
         // UserInfo endpoint requires Bearer token authentication
-        $this->Authentication->allowUnauthenticated(['authorize', 'token']);
+        // Discovery and JWKS endpoints are public
+        $this->Authentication->allowUnauthenticated(['authorize', 'token', 'discovery', 'jwks']);
     }
 
     /**
@@ -628,5 +629,67 @@ class OauthController extends AppController
 
         $this->set($userInfo);
         $this->viewBuilder()->setOption('serialize', array_keys($userInfo));
+    }
+
+    /**
+     * OpenID Connect Discovery document endpoint
+     *
+     * Returns metadata about this OpenID Provider
+     * GET /.well-known/openid-configuration
+     *
+     * @return void
+     */
+    public function discovery()
+    {
+        $this->viewBuilder()->setClassName('Json');
+
+        // Get issuer from JwtService to ensure consistency
+        $issuer = $this->jwtService->getIssuer();
+
+        // Build OpenID Connect Discovery document
+        // Per spec: https://openid.net/specs/openid-connect-discovery-1_0.html
+        $discovery = [
+            'issuer' => $issuer,
+            'authorization_endpoint' => $issuer . '/oauth/authorize',
+            'token_endpoint' => $issuer . '/oauth/token',
+            'userinfo_endpoint' => $issuer . '/oauth/userinfo',
+            'jwks_uri' => $issuer . '/.well-known/jwks.json',
+            'response_types_supported' => ['code'],
+            'subject_types_supported' => ['public'],
+            'id_token_signing_alg_values_supported' => ['HS256'],
+            'scopes_supported' => ['openid', 'profile', 'email'],
+            'token_endpoint_auth_methods_supported' => ['client_secret_post', 'client_secret_basic'],
+            'claims_supported' => ['sub', 'iss', 'aud', 'exp', 'iat', 'auth_time', 'preferred_username', 'email', 'email_verified'],
+        ];
+
+        $this->set($discovery);
+        $this->viewBuilder()->setOption('serialize', array_keys($discovery));
+    }
+
+    /**
+     * JWKS (JSON Web Key Set) endpoint
+     *
+     * Returns the public keys used to verify JWT tokens
+     * GET /.well-known/jwks.json
+     *
+     * Note: For HS256 (symmetric key algorithm), we return an empty key set
+     * because symmetric keys must remain secret and cannot be published.
+     * In a production system, you should use RS256 (asymmetric keys) instead.
+     *
+     * @return void
+     */
+    public function jwks()
+    {
+        $this->viewBuilder()->setClassName('Json');
+
+        // JWKS structure per RFC 7517 (JSON Web Key)
+        // For HS256, we return an empty keys array since symmetric keys
+        // cannot be exposed. This endpoint exists for OpenID Connect spec compliance.
+        $jwks = [
+            'keys' => [],
+        ];
+
+        $this->set($jwks);
+        $this->viewBuilder()->setOption('serialize', array_keys($jwks));
     }
 }

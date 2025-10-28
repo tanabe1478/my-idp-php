@@ -382,4 +382,67 @@ class OauthControllerTest extends TestCase
         $response = json_decode((string)$this->_response->getBody(), true);
         $this->assertEquals('invalid_token', $response['error']);
     }
+
+    /**
+     * Test OpenID Connect Discovery document endpoint
+     *
+     * @return void
+     */
+    public function testDiscoveryDocumentReturnsMetadata(): void
+    {
+        $this->get('/.well-known/openid-configuration');
+
+        $this->assertResponseOk();
+        $this->assertContentType('application/json');
+
+        $discovery = json_decode((string)$this->_response->getBody(), true);
+
+        // Required fields per OpenID Connect Discovery spec
+        $this->assertArrayHasKey('issuer', $discovery);
+        $this->assertArrayHasKey('authorization_endpoint', $discovery);
+        $this->assertArrayHasKey('token_endpoint', $discovery);
+        $this->assertArrayHasKey('userinfo_endpoint', $discovery);
+        $this->assertArrayHasKey('jwks_uri', $discovery);
+        $this->assertArrayHasKey('response_types_supported', $discovery);
+        $this->assertArrayHasKey('subject_types_supported', $discovery);
+        $this->assertArrayHasKey('id_token_signing_alg_values_supported', $discovery);
+
+        // Verify specific values
+        $this->assertEquals('http://localhost:8765', $discovery['issuer']);
+        $this->assertEquals('http://localhost:8765/oauth/authorize', $discovery['authorization_endpoint']);
+        $this->assertEquals('http://localhost:8765/oauth/token', $discovery['token_endpoint']);
+        $this->assertEquals('http://localhost:8765/oauth/userinfo', $discovery['userinfo_endpoint']);
+        $this->assertEquals('http://localhost:8765/.well-known/jwks.json', $discovery['jwks_uri']);
+
+        // Verify supported features
+        $this->assertContains('code', $discovery['response_types_supported']);
+        $this->assertContains('public', $discovery['subject_types_supported']);
+        $this->assertContains('HS256', $discovery['id_token_signing_alg_values_supported']);
+    }
+
+    /**
+     * Test JWKS (JSON Web Key Set) endpoint
+     *
+     * Note: This returns an empty key set for HS256 (symmetric key algorithm)
+     * since we cannot expose the secret key. This endpoint exists for spec compliance.
+     *
+     * @return void
+     */
+    public function testJwksEndpointReturnsKeySet(): void
+    {
+        $this->get('/.well-known/jwks.json');
+
+        $this->assertResponseOk();
+        $this->assertContentType('application/json');
+
+        $jwks = json_decode((string)$this->_response->getBody(), true);
+
+        // JWKS structure per RFC 7517
+        $this->assertArrayHasKey('keys', $jwks);
+        $this->assertIsArray($jwks['keys']);
+
+        // For HS256 (symmetric key), we return empty keys array
+        // since we cannot expose the secret key
+        $this->assertEmpty($jwks['keys'], 'HS256 uses symmetric keys which should not be exposed');
+    }
 }

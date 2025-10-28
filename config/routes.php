@@ -63,6 +63,12 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/pages/*', 'Pages::display');
 
         /*
+         * OpenID Connect Discovery and JWKS endpoints
+         */
+        $builder->connect('/.well-known/openid-configuration', ['controller' => 'Oauth', 'action' => 'discovery']);
+        $builder->connect('/.well-known/jwks.json', ['controller' => 'Oauth', 'action' => 'jwks']);
+
+        /*
          * Connect catchall routes for all controllers.
          *
          * The `fallbacks` method is a shortcut for
