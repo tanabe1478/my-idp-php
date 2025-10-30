@@ -4,8 +4,8 @@
 
 - **プロジェクト名**: OAuth2/OpenID Connect 認可サーバー
 - **開始日**: 2024-10-24
-- **現在のフェーズ**: フェーズ2完了 - OAuth2認可コードフロー実装完了
-- **最終更新**: 2025-10-27
+- **現在のフェーズ**: フェーズ5完了 - 追加フロー（Client Credentials, PKCE, 動的クライアント登録）実装完了
+- **最終更新**: 2025-10-30
 
 ---
 
@@ -96,9 +96,9 @@
 
 ---
 
-### フェーズ5: 追加フロー ⏳
+### フェーズ5: 追加フロー ✅
 
-**ステータス**: 未開始
+**ステータス**: 完了（2025-10-30完了）
 
 **目標**:
 - Client Credentialsグラント
@@ -106,9 +106,9 @@
 - 動的クライアント登録
 
 **タスク**:
-- [ ] Client Credentialsフロー実装
-- [ ] PKCE検証ロジック
-- [ ] 動的クライアント登録エンドポイント
+- [x] Client Credentialsフロー実装（2025-10-30完了）
+- [x] PKCE検証ロジック（2025-10-30完了）
+- [x] 動的クライアント登録エンドポイント（2025-10-30完了）
 
 ---
 
@@ -419,6 +419,37 @@
 
 **フェーズ4完了！** 🎉
 
+### 2025-10-30
+
+#### Phase 5完了: 追加フロー実装
+- ✅ **Client Credentialsグラント実装**
+  - POST /oauth/token（grant_type=client_credentials）エンドポイント
+  - クライアント認証のみでアクセストークン発行
+  - スコープサポート
+  - 3統合テスト全成功
+- ✅ **PKCE（Proof Key for Code Exchange）実装**
+  - authorization_codesテーブルにcode_challenge/code_challenge_methodフィールド追加
+  - S256チャレンジメソッド対応（SHA256ハッシュ）
+  - plainチャレンジメソッド対応（平文）
+  - トークンエンドポイントでcode_verifier検証
+  - 無効なverifierの拒否機能
+  - AuthorizationCode Entityにcode_challenge/code_challenge_methodフィールド追加
+  - 3PKCEテスト全成功
+- ✅ **Dynamic Client Registration実装（RFC 7591）**
+  - POST /oauth/register エンドポイント実装
+  - 自動client_id生成（32文字hex）
+  - 自動client_secret生成（64文字hex、bcrypt）
+  - redirect_uris バリデーション（必須、配列）
+  - client_name、grant_types オプショナルフィールド対応
+  - RFC 7591準拠のレスポンス（client_id、client_secret、client_id_issued_at等）
+  - 2統合テスト全成功
+
+**全テスト成功！**
+- 合計テスト数: 24テスト、129アサーション、全成功 ✅
+- リグレッションなし
+
+**Phase 5完了！** 🎉
+
 ---
 
 ### フェーズ3: トークン管理 ✅
@@ -449,8 +480,10 @@
 4. ~~フェーズ2（認可コードフロー）~~ ✅ **完了**
 5. ~~フェーズ3（トークン管理）~~ ✅ **完了**
 6. ~~フェーズ4（OpenID Connect）~~ ✅ **完了**
-7. フェーズ5（追加フロー - Client Credentials, PKCE, 動的登録）に移行 🚀
+7. ~~フェーズ5（追加フロー - Client Credentials, PKCE, 動的登録）~~ ✅ **完了**
 8. 統合テストの改善（将来のタスク）
+9. トークン取り消しエンドポイント（オプション）
+10. イントロスペクションエンドポイント（オプション）
 
 ---
 

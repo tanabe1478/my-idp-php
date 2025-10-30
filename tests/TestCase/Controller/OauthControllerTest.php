@@ -730,4 +730,61 @@ class OauthControllerTest extends TestCase
         $response = json_decode((string)$this->_response->getBody(), true);
         $this->assertArrayHasKey('access_token', $response);
     }
+
+    /**
+     * Test dynamic client registration with valid data
+     *
+     * @return void
+     */
+    public function testDynamicClientRegistrationWithValidData(): void
+    {
+        $this->enableCsrfToken();
+        $this->post('/oauth/register', [
+            'redirect_uris' => ['https://client.example.com/callback'],
+            'client_name' => 'Test Dynamic Client',
+            'grant_types' => ['authorization_code', 'refresh_token'],
+        ]);
+
+        $this->assertResponseOk();
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+
+        // RFC 7591: Response must include client_id
+        $this->assertArrayHasKey('client_id', $response);
+        $this->assertNotEmpty($response['client_id']);
+
+        // RFC 7591: Response must include client_secret for confidential clients
+        $this->assertArrayHasKey('client_secret', $response);
+        $this->assertNotEmpty($response['client_secret']);
+
+        // Response should echo back the registered metadata
+        $this->assertArrayHasKey('client_name', $response);
+        $this->assertEquals('Test Dynamic Client', $response['client_name']);
+
+        $this->assertArrayHasKey('redirect_uris', $response);
+        $this->assertEquals(['https://client.example.com/callback'], $response['redirect_uris']);
+
+        $this->assertArrayHasKey('grant_types', $response);
+        $this->assertEquals(['authorization_code', 'refresh_token'], $response['grant_types']);
+    }
+
+    /**
+     * Test dynamic client registration without redirect_uris
+     *
+     * @return void
+     */
+    public function testDynamicClientRegistrationWithoutRedirectUris(): void
+    {
+        $this->enableCsrfToken();
+        $this->post('/oauth/register', [
+            'client_name' => 'Test Client',
+        ]);
+
+        $this->assertResponseCode(400);
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertEquals('invalid_client_metadata', $response['error']);
+    }
 }

@@ -45,8 +45,8 @@ class OauthController extends AppController
         // Authorization endpoint is public (handles auth internally)
         // Token endpoint is also public (uses client authentication)
         // UserInfo endpoint requires Bearer token authentication
-        // Discovery and JWKS endpoints are public
-        $this->Authentication->allowUnauthenticated(['authorize', 'token', 'discovery', 'jwks']);
+        // Discovery, JWKS, and register endpoints are public
+        $this->Authentication->allowUnauthenticated(['authorize', 'token', 'discovery', 'jwks', 'register']);
     }
 
     /**
@@ -845,5 +845,93 @@ class OauthController extends AppController
 
         $this->set($jwks);
         $this->viewBuilder()->setOption('serialize', array_keys($jwks));
+    }
+
+    /**
+     * Dynamic Client Registration endpoint
+     *
+     * Implements RFC 7591 - OAuth 2.0 Dynamic Client Registration Protocol
+     * POST /oauth/register
+     *
+     * @return void
+     */
+    public function register()
+    {
+        $this->viewBuilder()->setClassName('Json');
+
+        // Only accept POST requests
+        if (!$this->request->is('post')) {
+            $this->response = $this->response->withStatus(405); // Method Not Allowed
+            $this->set([
+                'error' => 'invalid_request',
+                'error_description' => 'Only POST method is allowed',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+
+            return;
+        }
+
+        // Get registration request data
+        $data = $this->request->getData();
+
+        // Validate required fields
+        if (empty($data['redirect_uris']) || !is_array($data['redirect_uris'])) {
+            $this->response = $this->response->withStatus(400);
+            $this->set([
+                'error' => 'invalid_client_metadata',
+                'error_description' => 'redirect_uris is required and must be an array',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+
+            return;
+        }
+
+        // Generate unique client_id
+        $clientId = bin2hex(random_bytes(16)); // 32 character hex string
+
+        // Generate client_secret for confidential clients
+        $clientSecret = bin2hex(random_bytes(32)); // 64 character hex string
+        $hashedSecret = password_hash($clientSecret, PASSWORD_DEFAULT);
+
+        // Default values
+        $clientName = $data['client_name'] ?? 'Dynamically Registered Client';
+        $grantTypes = $data['grant_types'] ?? ['authorization_code'];
+        $isConfidential = true; // Always confidential for dynamic registration
+
+        // Create client entity
+        $client = $this->Clients->newEntity([
+            'client_id' => $clientId,
+            'client_secret' => $hashedSecret,
+            'name' => $clientName,
+            'redirect_uris' => $data['redirect_uris'],
+            'grant_types' => $grantTypes,
+            'is_confidential' => $isConfidential,
+            'is_active' => true,
+        ]);
+
+        // Save client
+        if (!$this->Clients->save($client)) {
+            $this->response = $this->response->withStatus(500);
+            $this->set([
+                'error' => 'server_error',
+                'error_description' => 'Failed to register client',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+
+            return;
+        }
+
+        // Return registration response per RFC 7591
+        $response = [
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret, // Return plain text secret (only time it's visible)
+            'client_name' => $clientName,
+            'redirect_uris' => $data['redirect_uris'],
+            'grant_types' => $grantTypes,
+            'client_id_issued_at' => time(),
+        ];
+
+        $this->set($response);
+        $this->viewBuilder()->setOption('serialize', array_keys($response));
     }
 }
