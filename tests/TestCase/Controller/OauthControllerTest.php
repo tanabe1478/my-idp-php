@@ -445,4 +445,80 @@ class OauthControllerTest extends TestCase
         // since we cannot expose the secret key
         $this->assertEmpty($jwks['keys'], 'HS256 uses symmetric keys which should not be exposed');
     }
+
+    /**
+     * Test Client Credentials grant type
+     *
+     * @return void
+     */
+    public function testClientCredentialsGrantReturnsAccessToken(): void
+    {
+        $this->post('/oauth/token', [
+            'grant_type' => 'client_credentials',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+            'scope' => 'openid profile',
+        ]);
+
+        $this->assertResponseOk();
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+
+        // Assert access token is returned
+        $this->assertArrayHasKey('access_token', $response);
+        $this->assertArrayHasKey('token_type', $response);
+        $this->assertArrayHasKey('expires_in', $response);
+        $this->assertArrayHasKey('scope', $response);
+
+        // Client Credentials should NOT return refresh token
+        $this->assertArrayNotHasKey('refresh_token', $response);
+
+        // Verify token type
+        $this->assertEquals('Bearer', $response['token_type']);
+
+        // Verify scope
+        $this->assertEquals('openid profile', $response['scope']);
+    }
+
+    /**
+     * Test Client Credentials grant requires valid client authentication
+     *
+     * @return void
+     */
+    public function testClientCredentialsGrantRequiresValidClient(): void
+    {
+        $this->post('/oauth/token', [
+            'grant_type' => 'client_credentials',
+            'client_id' => 'invalid_client',
+            'client_secret' => 'wrong_secret',
+        ]);
+
+        $this->assertResponseCode(401);
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertEquals('invalid_client', $response['error']);
+    }
+
+    /**
+     * Test Client Credentials grant validates scope
+     *
+     * @return void
+     */
+    public function testClientCredentialsGrantValidatesScope(): void
+    {
+        $this->post('/oauth/token', [
+            'grant_type' => 'client_credentials',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+            'scope' => 'invalid_scope',
+        ]);
+
+        $this->assertResponseCode(400);
+        $this->assertContentType('application/json');
+
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertEquals('invalid_scope', $response['error']);
+    }
 }

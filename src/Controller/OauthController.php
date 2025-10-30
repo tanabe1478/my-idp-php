@@ -251,6 +251,8 @@ class OauthController extends AppController
             $this->_handleAuthorizationCodeGrant($clientId, $clientSecret);
         } elseif ($grantType === 'refresh_token') {
             $this->_handleRefreshTokenGrant($clientId, $clientSecret);
+        } elseif ($grantType === 'client_credentials') {
+            $this->_handleClientCredentialsGrant($clientId, $clientSecret);
         } else {
             $this->set([
                 'error' => 'unsupported_grant_type',
@@ -516,6 +518,83 @@ class OauthController extends AppController
         $this->RefreshTokens->save($refreshToken);
 
         $response['refresh_token'] = $newRefreshTokenString;
+
+        $this->set($response);
+        $this->viewBuilder()->setOption('serialize', array_keys($response));
+    }
+
+    /**
+     * Handle client_credentials grant type
+     *
+     * @param string $clientId Client ID
+     * @param string|null $clientSecret Client secret
+     * @return void
+     */
+    protected function _handleClientCredentialsGrant(string $clientId, ?string $clientSecret): void
+    {
+        // Load ClientAuthenticationService
+        $clientAuth = new \App\Service\ClientAuthenticationService($this->Clients);
+
+        // Authenticate client
+        $client = $clientAuth->authenticate($clientId, $clientSecret);
+        if (!$client) {
+            $this->set([
+                'error' => 'invalid_client',
+                'error_description' => 'Client authentication failed',
+            ]);
+            $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+            $this->response = $this->response->withStatus(401);
+
+            return;
+        }
+
+        // Get requested scopes
+        $requestedScopes = $this->request->getData('scope');
+        $scopes = $requestedScopes ? explode(' ', $requestedScopes) : [];
+
+        // Validate scopes against client's allowed scopes
+        if (!empty($scopes)) {
+            $clientScopes = [];
+            foreach ($client->scopes as $scope) {
+                $clientScopes[] = $scope->name;
+            }
+
+            foreach ($scopes as $scope) {
+                if (!in_array($scope, $clientScopes)) {
+                    $this->set([
+                        'error' => 'invalid_scope',
+                        'error_description' => 'Requested scope is not allowed for this client',
+                    ]);
+                    $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+                    $this->response = $this->response->withStatus(400);
+
+                    return;
+                }
+            }
+        }
+
+        // Generate access token (no user context, client-only)
+        // Use client ID as "user" for client credentials flow
+        $accessToken = $this->jwtService->generateAccessToken(
+            $client->client_id,
+            $client->client_id,  // Client acts as both client and "user"
+            $scopes,
+            3600
+        );
+
+        // Prepare response
+        $response = [
+            'access_token' => $accessToken,
+            'token_type' => 'Bearer',
+            'expires_in' => 3600,
+        ];
+
+        if (!empty($scopes)) {
+            $response['scope'] = implode(' ', $scopes);
+        }
+
+        // Note: Client Credentials flow does NOT return refresh token
+        // as there is no user context to refresh
 
         $this->set($response);
         $this->viewBuilder()->setOption('serialize', array_keys($response));
