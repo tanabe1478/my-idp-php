@@ -11,6 +11,9 @@
         "cakephp/migrations": "^4.0.0",
         "cakephp/plugin-installer": "^2.0",
         "firebase/php-jwt": "^6.11",
+        "league/oauth2-client": "^2.8",
+        "league/oauth2-github": "^3.1",
+        "league/oauth2-google": "^4.0",
         "mobiledetect/mobiledetectlib": "^4.8.03",
         "ramsey/uuid": "^4.9"
     },
