@@ -27,6 +27,8 @@ class AuthorizationCodesFixture extends TestFixture
                 'scopes' => '["openid","profile","email"]',
                 'expires_at' => '2025-12-31 23:59:59', // Valid
                 'is_used' => false,
+                'code_challenge' => null,
+                'code_challenge_method' => null,
                 'created' => '2025-10-27 00:00:00',
                 'modified' => '2025-10-27 00:00:00',
             ],

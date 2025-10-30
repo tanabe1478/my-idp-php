@@ -16,6 +16,8 @@ use Cake\ORM\Entity;
  * @property array $scopes
  * @property \Cake\I18n\DateTime $expires_at
  * @property bool $is_used
+ * @property string|null $code_challenge
+ * @property string|null $code_challenge_method
  * @property \Cake\I18n\DateTime $created
  * @property \Cake\I18n\DateTime $modified
  *
@@ -37,6 +39,8 @@ class AuthorizationCode extends Entity
         'scopes' => true,
         'expires_at' => true,
         'is_used' => true,
+        'code_challenge' => true,
+        'code_challenge_method' => true,
         'client' => true,
         'user' => true,
         'created' => false,

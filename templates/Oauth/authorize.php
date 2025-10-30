@@ -34,6 +34,12 @@
         <?php if ($state): ?>
             <?= $this->Form->hidden('state', ['value' => $state]) ?>
         <?php endif; ?>
+        <?php if (isset($codeChallenge)): ?>
+            <?= $this->Form->hidden('code_challenge', ['value' => $codeChallenge]) ?>
+        <?php endif; ?>
+        <?php if (isset($codeChallengeMethod)): ?>
+            <?= $this->Form->hidden('code_challenge_method', ['value' => $codeChallengeMethod]) ?>
+        <?php endif; ?>
 
         <?php if (!empty($requestedScopes)): ?>
             <?php foreach ($requestedScopes as $index => $scope): ?>

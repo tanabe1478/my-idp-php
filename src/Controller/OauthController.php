@@ -109,6 +109,10 @@ class OauthController extends AppController
             throw new BadRequestException('Invalid redirect_uri');
         }
 
+        // Get PKCE parameters (optional)
+        $codeChallenge = $this->request->getQuery('code_challenge');
+        $codeChallengeMethod = $this->request->getQuery('code_challenge_method');
+
         // Check if user is authenticated
         $user = $this->Authentication->getIdentity();
         if (!$user) {
@@ -119,6 +123,8 @@ class OauthController extends AppController
                 'redirect_uri' => $redirectUri,
                 'scope' => $scope,
                 'state' => $state,
+                'code_challenge' => $codeChallenge,
+                'code_challenge_method' => $codeChallengeMethod,
             ]);
 
             return $this->redirect([
@@ -131,8 +137,8 @@ class OauthController extends AppController
         // Parse requested scopes
         $requestedScopes = array_filter(explode(' ', $scope));
 
-        // Show consent screen
-        $this->set(compact('client', 'redirectUri', 'requestedScopes', 'state'));
+        // Show consent screen (pass PKCE parameters to view as well)
+        $this->set(compact('client', 'redirectUri', 'requestedScopes', 'state', 'codeChallenge', 'codeChallengeMethod'));
     }
 
     /**
@@ -187,19 +193,28 @@ class OauthController extends AppController
         // Calculate expiration (10 minutes from now)
         $expiresAt = new \DateTime('+10 minutes');
 
+        // Get PKCE parameters from POST data (passed as hidden fields from the consent form)
+        $codeChallenge = $this->request->getData('code_challenge');
+        $codeChallengeMethod = $this->request->getData('code_challenge_method');
+
         // Create authorization code record
         $authCode = $this->AuthorizationCodes->newEntity([
             'code' => $code,
-            'client_id' => $client->id,
-            'user_id' => $user->getIdentifier(),
             'redirect_uri' => $redirectUri,
             'scopes' => $scopes,
             'expires_at' => $expiresAt,
             'is_used' => false,
+            'code_challenge' => $codeChallenge,
+            'code_challenge_method' => $codeChallengeMethod,
         ]);
 
+        // Set foreign keys directly to avoid association marshalling issues
+        $authCode->client_id = $client->id;
+        $authCode->user_id = $user->getIdentifier();
+
         if (!$this->AuthorizationCodes->save($authCode)) {
-            throw new \RuntimeException('Failed to save authorization code');
+            $errors = $authCode->getErrors();
+            throw new \RuntimeException('Failed to save authorization code: ' . json_encode($errors));
         }
 
         // Redirect back to client with authorization code
@@ -348,6 +363,40 @@ class OauthController extends AppController
             $this->response = $this->response->withStatus(400);
 
             return;
+        }
+
+        // Verify PKCE if code_challenge was provided during authorization
+        if ($authCode->code_challenge) {
+            $codeVerifier = $this->request->getData('code_verifier');
+
+            if (!$codeVerifier) {
+                $this->set([
+                    'error' => 'invalid_grant',
+                    'error_description' => 'code_verifier is required for PKCE',
+                ]);
+                $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+                $this->response = $this->response->withStatus(400);
+
+                return;
+            }
+
+            // Verify code_verifier against code_challenge
+            $isValid = $this->verifyPkce(
+                $codeVerifier,
+                $authCode->code_challenge,
+                $authCode->code_challenge_method ?? 'plain'
+            );
+
+            if (!$isValid) {
+                $this->set([
+                    'error' => 'invalid_grant',
+                    'error_description' => 'PKCE verification failed',
+                ]);
+                $this->viewBuilder()->setOption('serialize', ['error', 'error_description']);
+                $this->response = $this->response->withStatus(400);
+
+                return;
+            }
         }
 
         // Mark authorization code as used
@@ -743,6 +792,32 @@ class OauthController extends AppController
 
         $this->set($discovery);
         $this->viewBuilder()->setOption('serialize', array_keys($discovery));
+    }
+
+    /**
+     * Verify PKCE code_verifier against code_challenge
+     *
+     * @param string $codeVerifier The code verifier from token request
+     * @param string $codeChallenge The code challenge from authorization request
+     * @param string $method The challenge method ('plain' or 'S256')
+     * @return bool True if verification succeeds
+     */
+    protected function verifyPkce(string $codeVerifier, string $codeChallenge, string $method): bool
+    {
+        if ($method === 'plain') {
+            // Plain method: code_challenge = code_verifier
+            return hash_equals($codeChallenge, $codeVerifier);
+        }
+
+        if ($method === 'S256') {
+            // S256 method: code_challenge = BASE64URL(SHA256(code_verifier))
+            $computedChallenge = rtrim(strtr(base64_encode(hash('sha256', $codeVerifier, true)), '+/', '-_'), '=');
+
+            return hash_equals($codeChallenge, $computedChallenge);
+        }
+
+        // Unknown method
+        return false;
     }
 
     /**

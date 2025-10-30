@@ -521,4 +521,213 @@ class OauthControllerTest extends TestCase
         $response = json_decode((string)$this->_response->getBody(), true);
         $this->assertEquals('invalid_scope', $response['error']);
     }
+
+    /**
+     * Test PKCE with S256 code challenge method
+     *
+     * @return void
+     */
+    public function testPkceWithS256ChallengeMethod(): void
+    {
+        // Generate code_verifier and code_challenge for PKCE
+        $codeVerifier = bin2hex(random_bytes(32)); // 64 character string
+        $codeChallenge = rtrim(strtr(base64_encode(hash('sha256', $codeVerifier, true)), '+/', '-_'), '=');
+
+        // Step 1a: Authorization request with PKCE (GET to show consent screen)
+        $this->session([
+            'Auth' => [
+                'id' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                'username' => 'testuser1',
+            ],
+        ]);
+
+        $this->get('/oauth/authorize?' . http_build_query([
+            'response_type' => 'code',
+            'client_id' => 'test_client_1',
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'scope' => 'openid profile',
+            'state' => 'random_state_string',
+            'code_challenge' => $codeChallenge,
+            'code_challenge_method' => 'S256',
+        ]));
+
+        $this->assertResponseOk(); // Should show consent screen
+
+        // Step 1b: POST to approve authorization (ensure session persists)
+        $this->session([
+            'Auth' => [
+                'id' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                'username' => 'testuser1',
+            ],
+        ]);
+
+        $this->post('/oauth/authorize', [
+            'client_id' => 'test_client_1',
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'state' => 'random_state_string',
+            'scopes' => ['openid', 'profile'],
+            'approved' => '1',
+            'code_challenge' => $codeChallenge,
+            'code_challenge_method' => 'S256',
+        ]);
+
+        $this->assertRedirect();
+        $redirectUrl = $this->_response->getHeaderLine('Location');
+        parse_str(parse_url($redirectUrl, PHP_URL_QUERY), $params);
+
+        $this->assertArrayHasKey('code', $params);
+        $authorizationCode = $params['code'];
+
+        // Step 2: Token request with code_verifier
+        $this->post('/oauth/token', [
+            'grant_type' => 'authorization_code',
+            'code' => $authorizationCode,
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+            'code_verifier' => $codeVerifier,
+        ]);
+
+        $this->assertResponseOk();
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertArrayHasKey('access_token', $response);
+    }
+
+    /**
+     * Test PKCE rejects invalid code_verifier
+     *
+     * @return void
+     */
+    public function testPkceRejectsInvalidCodeVerifier(): void
+    {
+        // Generate code_verifier and code_challenge for PKCE
+        $codeVerifier = bin2hex(random_bytes(32));
+        $codeChallenge = rtrim(strtr(base64_encode(hash('sha256', $codeVerifier, true)), '+/', '-_'), '=');
+
+        // Step 1a: Authorization request with PKCE (GET to show consent screen)
+        $this->session([
+            'Auth' => [
+                'id' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                'username' => 'testuser1',
+            ],
+        ]);
+
+        $this->get('/oauth/authorize?' . http_build_query([
+            'response_type' => 'code',
+            'client_id' => 'test_client_1',
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'scope' => 'openid profile',
+            'state' => 'random_state_string',
+            'code_challenge' => $codeChallenge,
+            'code_challenge_method' => 'S256',
+        ]));
+
+        $this->assertResponseOk(); // Should show consent screen
+
+        // Step 1b: POST to approve authorization (ensure session persists)
+        $this->session([
+            'Auth' => [
+                'id' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                'username' => 'testuser1',
+            ],
+        ]);
+
+        $this->post('/oauth/authorize', [
+            'client_id' => 'test_client_1',
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'state' => 'random_state_string',
+            'scopes' => ['openid', 'profile'],
+            'approved' => '1',
+            'code_challenge' => $codeChallenge,
+            'code_challenge_method' => 'S256',
+        ]);
+
+        $this->assertRedirect();
+        $redirectUrl = $this->_response->getHeaderLine('Location');
+        parse_str(parse_url($redirectUrl, PHP_URL_QUERY), $params);
+        $authorizationCode = $params['code'];
+
+        // Step 2: Token request with WRONG code_verifier
+        $this->post('/oauth/token', [
+            'grant_type' => 'authorization_code',
+            'code' => $authorizationCode,
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+            'code_verifier' => 'wrong_verifier_12345',
+        ]);
+
+        $this->assertResponseCode(400);
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertEquals('invalid_grant', $response['error']);
+    }
+
+    /**
+     * Test PKCE with plain code challenge method
+     *
+     * @return void
+     */
+    public function testPkceWithPlainChallengeMethod(): void
+    {
+        // Use plain method (code_challenge = code_verifier)
+        $codeVerifier = bin2hex(random_bytes(32));
+        $codeChallenge = $codeVerifier; // plain method
+
+        // Step 1a: Authorization request with PKCE plain (GET to show consent screen)
+        $this->session([
+            'Auth' => [
+                'id' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                'username' => 'testuser1',
+            ],
+        ]);
+
+        $this->get('/oauth/authorize?' . http_build_query([
+            'response_type' => 'code',
+            'client_id' => 'test_client_1',
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'scope' => 'openid profile',
+            'state' => 'random_state_string',
+            'code_challenge' => $codeChallenge,
+            'code_challenge_method' => 'plain',
+        ]));
+
+        $this->assertResponseOk(); // Should show consent screen
+
+        // Step 1b: POST to approve authorization (ensure session persists)
+        $this->session([
+            'Auth' => [
+                'id' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                'username' => 'testuser1',
+            ],
+        ]);
+
+        $this->post('/oauth/authorize', [
+            'client_id' => 'test_client_1',
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'state' => 'random_state_string',
+            'scopes' => ['openid', 'profile'],
+            'approved' => '1',
+            'code_challenge' => $codeChallenge,
+            'code_challenge_method' => 'plain',
+        ]);
+
+        $this->assertRedirect();
+        $redirectUrl = $this->_response->getHeaderLine('Location');
+        parse_str(parse_url($redirectUrl, PHP_URL_QUERY), $params);
+        $authorizationCode = $params['code'];
+
+        // Step 2: Token request with code_verifier
+        $this->post('/oauth/token', [
+            'grant_type' => 'authorization_code',
+            'code' => $authorizationCode,
+            'redirect_uri' => 'http://localhost:3000/callback',
+            'client_id' => 'test_client_1',
+            'client_secret' => 'secret',
+            'code_verifier' => $codeVerifier,
+        ]);
+
+        $this->assertResponseOk();
+        $response = json_decode((string)$this->_response->getBody(), true);
+        $this->assertArrayHasKey('access_token', $response);
+    }
 }
