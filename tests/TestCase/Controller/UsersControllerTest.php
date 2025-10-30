@@ -22,6 +22,7 @@ class UsersControllerTest extends TestCase
      */
     protected array $fixtures = [
         'app.Users',
+        'app.SocialAccounts',
     ];
 
     /**
@@ -170,5 +171,100 @@ class UsersControllerTest extends TestCase
 
         $this->assertResponseSuccess();
         $this->assertRedirect('/users/index');
+    }
+
+    /**
+     * Test socialLogin with Google redirects to Google OAuth
+     *
+     * @return void
+     * @uses \App\Controller\UsersController::socialLogin()
+     */
+    public function testSocialLoginWithGoogleRedirectsToGoogleOAuth(): void
+    {
+        $this->get('/users/login/google');
+
+        $this->assertResponseCode(302);
+        $this->assertRedirectContains('accounts.google.com');
+    }
+
+    /**
+     * Test socialLogin with GitHub redirects to GitHub OAuth
+     *
+     * @return void
+     * @uses \App\Controller\UsersController::socialLogin()
+     */
+    public function testSocialLoginWithGitHubRedirectsToGitHubOAuth(): void
+    {
+        $this->get('/users/login/github');
+
+        $this->assertResponseCode(302);
+        $this->assertRedirectContains('github.com');
+    }
+
+    /**
+     * Test socialLogin with unsupported provider returns error
+     *
+     * @return void
+     * @uses \App\Controller\UsersController::socialLogin()
+     */
+    public function testSocialLoginWithUnsupportedProviderReturnsError(): void
+    {
+        $this->get('/users/login/invalid');
+
+        $this->assertResponseCode(500);
+    }
+
+    /**
+     * Test socialCallback creates new user and logs in
+     *
+     * @return void
+     * @uses \App\Controller\UsersController::socialCallback()
+     */
+    public function testSocialCallbackCreatesNewUserAndLogsIn(): void
+    {
+        // This test will be skipped as it requires mocking external OAuth API calls
+        $this->markTestSkipped('Requires mocking external OAuth provider API calls');
+    }
+
+    /**
+     * Test socialCallback logs in existing user
+     *
+     * @return void
+     * @uses \App\Controller\UsersController::socialCallback()
+     */
+    public function testSocialCallbackLogsInExistingUser(): void
+    {
+        // This test will be skipped as it requires mocking external OAuth API calls
+        $this->markTestSkipped('Requires mocking external OAuth provider API calls');
+    }
+
+    /**
+     * Test socialCallback with missing code parameter
+     *
+     * @return void
+     * @uses \App\Controller\UsersController::socialCallback()
+     */
+    public function testSocialCallbackWithMissingCodeParameter(): void
+    {
+        $this->get('/users/callback/google');
+
+        $this->assertResponseCode(302);
+        $this->assertRedirectContains('/users/login');
+        $this->assertFlashMessage('Authentication failed', 'flash');
+    }
+
+    /**
+     * Test socialCallback with error parameter
+     *
+     * @return void
+     * @uses \App\Controller\UsersController::socialCallback()
+     */
+    public function testSocialCallbackWithErrorParameter(): void
+    {
+        $this->get('/users/callback/google?error=access_denied');
+
+        $this->assertResponseCode(302);
+        $this->assertRedirectContains('/users/login');
+        $this->assertFlashMessage('Authentication cancelled', 'flash');
     }
 }

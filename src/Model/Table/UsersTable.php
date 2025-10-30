@@ -41,6 +41,11 @@ class UsersTable extends Table
         $this->setPrimaryKey('id');
 
         $this->addBehavior('Timestamp');
+
+        // Associations
+        $this->hasMany('SocialAccounts', [
+            'foreignKey' => 'user_id',
+        ]);
     }
 
     /**

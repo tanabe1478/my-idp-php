@@ -69,6 +69,14 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/.well-known/jwks.json', ['controller' => 'Oauth', 'action' => 'jwks']);
 
         /*
+         * Social Authentication routes
+         */
+        $builder->connect('/users/login/{provider}', ['controller' => 'Users', 'action' => 'socialLogin'])
+            ->setPass(['provider']);
+        $builder->connect('/users/callback/{provider}', ['controller' => 'Users', 'action' => 'socialCallback'])
+            ->setPass(['provider']);
+
+        /*
          * Connect catchall routes for all controllers.
          *
          * The `fallbacks` method is a shortcut for

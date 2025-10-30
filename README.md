@@ -105,14 +105,16 @@ INSERT INTO users (id, username, email, password_hash, is_active, created, modif
 
 ### 開発サーバーの起動
 
-```bash
-bin/cake server
-```
-
-または、起動スクリプトを使用：
+推奨: 起動スクリプトを使用（データベース接続チェック付き）
 
 ```bash
 ./bin/start-dev.sh
+```
+
+または、直接起動:
+
+```bash
+bin/cake server
 ```
 
 サーバーが起動したら、ブラウザで以下にアクセスできます：
@@ -129,6 +131,14 @@ bin/cake server
 | testuser1 | password123 | 有効 |
 | testuser2 | password456 | 有効 |
 | inactiveuser | password789 | 無効 |
+
+### ソーシャルログイン（オプション）
+
+Google および GitHub を使ったソーシャルログインも利用できます。
+
+設定手順: [docs/SOCIAL_LOGIN_SETUP.md](docs/SOCIAL_LOGIN_SETUP.md)
+
+設定後、ログインページに「Sign in with Google」「Sign in with GitHub」ボタンが表示されます。
 
 ## テストの実行
 
@@ -195,6 +205,8 @@ idp-php/
 - [開発ガイドライン](docs/DEVELOPMENT_GUIDE.md)
 - [進捗状況](docs/PROGRESS.md)
 - [プロジェクト固有ガイド](.claude/CLAUDE.md)
+- [ソーシャルログイン設定](docs/SOCIAL_LOGIN_SETUP.md)
+- [統合テスト手順](docs/INTEGRATION_TEST.md)
 
 ## ライセンス
 

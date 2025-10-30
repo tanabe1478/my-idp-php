@@ -72,6 +72,28 @@ else
 fi
 echo ""
 
+# ソーシャルログイン設定チェック
+echo -e "${YELLOW}[4/4] ソーシャルログイン設定確認中...${NC}"
+GOOGLE_CLIENT_ID=$(grep -A 3 "'google'" config/app_local.php | grep "clientId" | cut -d "'" -f 4 2>/dev/null || echo "")
+GITHUB_CLIENT_ID=$(grep -A 3 "'github'" config/app_local.php | grep "clientId" | cut -d "'" -f 4 2>/dev/null || echo "")
+
+if [ "$GOOGLE_CLIENT_ID" = "test_google_client_id" ] || [ -z "$GOOGLE_CLIENT_ID" ]; then
+    echo -e "${YELLOW}⚠ Google OAuth未設定${NC}"
+    GOOGLE_CONFIGURED=false
+else
+    echo -e "${GREEN}✓ Google OAuth設定済み${NC}"
+    GOOGLE_CONFIGURED=true
+fi
+
+if [ "$GITHUB_CLIENT_ID" = "test_github_client_id" ] || [ -z "$GITHUB_CLIENT_ID" ]; then
+    echo -e "${YELLOW}⚠ GitHub OAuth未設定${NC}"
+    GITHUB_CONFIGURED=false
+else
+    echo -e "${GREEN}✓ GitHub OAuth設定済み${NC}"
+    GITHUB_CONFIGURED=true
+fi
+echo ""
+
 # サーバー起動情報表示
 echo -e "${GREEN}================================${NC}"
 echo -e "${GREEN}サーバーを起動します${NC}"
@@ -85,6 +107,26 @@ echo "  - testuser1 / password123 (有効)"
 echo "  - testuser2 / password456 (有効)"
 echo "  - inactiveuser / password789 (無効)"
 echo ""
+echo -e "${YELLOW}ソーシャルログイン:${NC}"
+if [ "$GOOGLE_CONFIGURED" = true ]; then
+    echo -e "  - ${GREEN}Google OAuth (利用可能)${NC}"
+else
+    echo -e "  - ${YELLOW}Google OAuth (未設定)${NC}"
+fi
+if [ "$GITHUB_CONFIGURED" = true ]; then
+    echo -e "  - ${GREEN}GitHub OAuth (利用可能)${NC}"
+else
+    echo -e "  - ${YELLOW}GitHub OAuth (未設定)${NC}"
+fi
+echo ""
+if [ "$GOOGLE_CONFIGURED" = false ] || [ "$GITHUB_CONFIGURED" = false ]; then
+    echo -e "${YELLOW}📝 ソーシャルログインを有効にするには:${NC}"
+    echo "   1. Google/GitHub Developer Consoleでアプリ登録"
+    echo "   2. Redirect URI: http://localhost:8765/users/callback/{provider}"
+    echo "   3. config/app_local.php に認証情報を設定"
+    echo "   詳細: docs/SOCIAL_LOGIN_SETUP.md を参照"
+    echo ""
+fi
 echo -e "${YELLOW}停止: Ctrl+C${NC}"
 echo ""
 echo -e "${GREEN}================================${NC}"

@@ -1,0 +1,27 @@
+{
+  "name": "idp-php-e2e-tests",
+  "version": "1.0.0",
+  "description": "End-to-end tests for IDP PHP using Playwright",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:social": "playwright test tests/social-login.spec.ts",
+    "test:google": "playwright test tests/social-login.spec.ts -g \"Google\"",
+    "test:github": "playwright test tests/social-login.spec.ts -g \"GitHub\"",
+    "report": "playwright show-report"
+  },
+  "keywords": [
+    "e2e",
+    "playwright",
+    "oauth",
+    "social-login"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.10.0",
+    "dotenv": "^16.3.1"
+  }
+}
