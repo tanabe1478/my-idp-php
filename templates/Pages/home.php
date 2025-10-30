@@ -1,241 +1,358 @@
 <?php
 /**
- * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * OAuth2 Identity Provider - Home Page
  *
- * Licensed under The MIT License
- * For full copyright and license information, please see the LICENSE.txt
- * Redistributions of files must retain the above copyright notice.
- *
- * @copyright Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
- * @link      https://cakephp.org CakePHP(tm) Project
- * @since     0.10.0
- * @license   https://opensource.org/licenses/mit-license.php MIT License
  * @var \App\View\AppView $this
  */
-use Cake\Cache\Cache;
-use Cake\Core\Configure;
-use Cake\Core\Plugin;
-use Cake\Datasource\ConnectionManager;
-use Cake\Error\Debugger;
-use Cake\Http\Exception\NotFoundException;
+$this->assign('title', 'Home');
+?>
 
-$this->disableAutoLayout();
-
-$checkConnection = function (string $name) {
-    $error = null;
-    $connected = false;
-    try {
-        ConnectionManager::get($name)->getDriver()->connect();
-        // No exception means success
-        $connected = true;
-    } catch (Exception $connectionError) {
-        $error = $connectionError->getMessage();
-        if (method_exists($connectionError, 'getAttributes')) {
-            $attributes = $connectionError->getAttributes();
-            if (isset($attributes['message'])) {
-                $error .= '<br />' . $attributes['message'];
-            }
-        }
-        if ($name === 'debug_kit') {
-            $error = 'Try adding your current <b>top level domain</b> to the
-                <a href="https://book.cakephp.org/debugkit/5/en/index.html#configuration" target="_blank">DebugKit.safeTld</a>
-            config and reload.';
-            if (!in_array('sqlite', \PDO::getAvailableDrivers())) {
-                $error .= '<br />You need to install the PHP extension <code>pdo_sqlite</code> so DebugKit can work properly.';
-            }
-        }
+<style>
+    .hero {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        margin-bottom: 3rem;
     }
 
-    return compact('connected', 'error');
-};
+    .hero-title {
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--gray-900);
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
 
-if (!Configure::read('debug')) :
-    throw new NotFoundException(
-        'Please replace templates/Pages/home.php with your own version or re-enable debug mode.'
-    );
-endif;
+    .hero-subtitle {
+        font-size: 1.5rem;
+        color: var(--gray-600);
+        margin-bottom: 2.5rem;
+        font-weight: 400;
+    }
 
-?>
-<!DOCTYPE html>
-<html>
-<head>
-    <?= $this->Html->charset() ?>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>
-        CakePHP: the rapid development PHP framework:
-        <?= $this->fetch('title') ?>
-    </title>
-    <?= $this->Html->meta('icon') ?>
+    .hero-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
 
-    <?= $this->Html->css(['normalize.min', 'milligram.min', 'fonts', 'cake', 'home']) ?>
+    .hero-btn {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 10px;
+        text-decoration: none;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 
-    <?= $this->fetch('meta') ?>
-    <?= $this->fetch('css') ?>
-    <?= $this->fetch('script') ?>
-</head>
-<body>
-    <header>
-        <div class="container text-center">
-            <a href="https://cakephp.org/" target="_blank" rel="noopener">
-                <img alt="CakePHP" src="https://cakephp.org/v2/img/logos/CakePHP_Logo.svg" width="350" />
+    .hero-btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .hero-btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4);
+    }
+
+    .hero-btn-secondary {
+        background: white;
+        color: var(--primary);
+        border: 2px solid var(--primary);
+    }
+
+    .hero-btn-secondary:hover {
+        background: var(--gray-50);
+        transform: translateY(-3px);
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .feature-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .feature-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        color: white;
+    }
+
+    .feature-icon svg {
+        width: 32px;
+        height: 32px;
+    }
+
+    .feature-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        margin-bottom: 0.75rem;
+    }
+
+    .feature-description {
+        color: var(--gray-600);
+        line-height: 1.6;
+    }
+
+    .tech-stack {
+        background: white;
+        padding: 2.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        margin-bottom: 3rem;
+    }
+
+    .tech-stack-title {
+        font-size: 2rem;
+        font-weight: 700;
+        text-align: center;
+        color: var(--gray-900);
+        margin-bottom: 2rem;
+    }
+
+    .tech-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .tech-badge {
+        padding: 0.75rem 1.5rem;
+        background: var(--gray-100);
+        border-radius: 8px;
+        font-weight: 600;
+        color: var(--gray-700);
+        border: 2px solid var(--gray-200);
+    }
+
+    .cta-section {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        padding: 3rem 2rem;
+        border-radius: 16px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(79, 70, 229, 0.3);
+    }
+
+    .cta-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .cta-description {
+        font-size: 1.2rem;
+        opacity: 0.95;
+        margin-bottom: 2rem;
+    }
+
+    .cta-btn {
+        padding: 1rem 2.5rem;
+        background: white;
+        color: var(--primary);
+        font-size: 1.1rem;
+        font-weight: 700;
+        border-radius: 10px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+
+    .cta-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255, 255, 255, 0.3);
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+        }
+
+        .features-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="hero">
+    <h1 class="hero-title">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; vertical-align: middle; color: var(--primary);">
+            <path d="M12 15C15.866 15 19 11.866 19 8C19 4.13401 15.866 1 12 1C8.13401 1 5 4.13401 5 8C5 11.866 8.13401 15 12 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8.21 13.89L7 23L12 20L17 23L15.79 13.88" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        OAuth2 Identity Provider
+    </h1>
+    <p class="hero-subtitle">
+        Secure, modern authentication system built with CakePHP
+    </p>
+    <div class="hero-buttons">
+        <?php if ($this->request->getAttribute('identity')): ?>
+            <a href="<?= $this->Url->build(['controller' => 'Users', 'action' => 'index']) ?>" class="hero-btn hero-btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Go to Dashboard
             </a>
-            <h1>
-                Welcome to CakePHP <?= h(Configure::version()) ?> Chiffon (🍰)
-            </h1>
+            <a href="<?= $this->Url->build(['controller' => 'Clients', 'action' => 'index']) ?>" class="hero-btn hero-btn-secondary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 16V8C21 6.89543 20.1046 6 19 6H5C3.89543 6 3 6.89543 3 8V16C3 17.1046 3.89543 18 5 18H19C20.1046 18 21 17.1046 21 16Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M1 10H23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Manage Clients
+            </a>
+        <?php else: ?>
+            <a href="<?= $this->Url->build(['controller' => 'Users', 'action' => 'login']) ?>" class="hero-btn hero-btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M10 17L15 12L10 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M15 12H3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Sign In
+            </a>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="features-grid">
+    <div class="feature-card">
+        <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 15C15.866 15 19 11.866 19 8C19 4.13401 15.866 1 12 1C8.13401 1 5 4.13401 5 8C5 11.866 8.13401 15 12 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8.21 13.89L7 23L12 20L17 23L15.79 13.88" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
-    </header>
-    <main class="main">
-        <div class="container">
-            <div class="content">
-                <div class="row">
-                    <div class="column">
-                        <div class="message default text-center">
-                            <small>Please be aware that this page will not be shown if you turn off debug mode unless you replace templates/Pages/home.php with your own version.</small>
-                        </div>
-                        <div id="url-rewriting-warning" style="padding: 1rem; background: #fcebea; color: #cc1f1a; border-color: #ef5753;">
-                            <ul>
-                                <li class="bullet problem">
-                                    URL rewriting is not properly configured on your server.<br />
-                                    1) <a target="_blank" rel="noopener" href="https://book.cakephp.org/5/en/installation.html#url-rewriting">Help me configure it</a><br />
-                                    2) <a target="_blank" rel="noopener" href="https://book.cakephp.org/5/en/development/configuration.html#general-configuration">I don't / can't use URL rewriting</a>
-                                </li>
-                            </ul>
-                        </div>
-                        <?php Debugger::checkSecurityKeys(); ?>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="column">
-                        <h4>Environment</h4>
-                        <ul>
-                        <?php if (version_compare(PHP_VERSION, '8.1.0', '>=')) : ?>
-                            <li class="bullet success">Your version of PHP is 8.1.0 or higher (detected <?= PHP_VERSION ?>).</li>
-                        <?php else : ?>
-                            <li class="bullet problem">Your version of PHP is too low. You need PHP 8.1.0 or higher to use CakePHP (detected <?= PHP_VERSION ?>).</li>
-                        <?php endif; ?>
+        <h3 class="feature-title">OAuth2 & OpenID Connect</h3>
+        <p class="feature-description">
+            Industry-standard authentication protocols for secure, scalable identity management.
+        </p>
+    </div>
 
-                        <?php if (extension_loaded('mbstring')) : ?>
-                            <li class="bullet success">Your version of PHP has the mbstring extension loaded.</li>
-                        <?php else : ?>
-                            <li class="bullet problem">Your version of PHP does NOT have the mbstring extension loaded.</li>
-                        <?php endif; ?>
-
-                        <?php if (extension_loaded('openssl')) : ?>
-                            <li class="bullet success">Your version of PHP has the openssl extension loaded.</li>
-                        <?php else : ?>
-                            <li class="bullet problem">Your version of PHP does NOT have the openssl extension loaded.</li>
-                        <?php endif; ?>
-
-                        <?php if (extension_loaded('intl')) : ?>
-                            <li class="bullet success">Your version of PHP has the intl extension loaded.</li>
-                        <?php else : ?>
-                            <li class="bullet problem">Your version of PHP does NOT have the intl extension loaded.</li>
-                        <?php endif; ?>
-
-                        <?php if (ini_get('zend.assertions') !== '1') : ?>
-                            <li class="bullet problem">You should set <code>zend.assertions</code> to <code>1</code> in your <code>php.ini</code> for your development environment.</li>
-                        <?php endif; ?>
-                        </ul>
-                    </div>
-                    <div class="column">
-                        <h4>Filesystem</h4>
-                        <ul>
-                        <?php if (is_writable(TMP)) : ?>
-                            <li class="bullet success">Your tmp directory is writable.</li>
-                        <?php else : ?>
-                            <li class="bullet problem">Your tmp directory is NOT writable.</li>
-                        <?php endif; ?>
-
-                        <?php if (is_writable(LOGS)) : ?>
-                            <li class="bullet success">Your logs directory is writable.</li>
-                        <?php else : ?>
-                            <li class="bullet problem">Your logs directory is NOT writable.</li>
-                        <?php endif; ?>
-
-                        <?php $settings = Cache::getConfig('_cake_translations_'); ?>
-                        <?php if (!empty($settings)) : ?>
-                            <li class="bullet success">The <em><?= h($settings['className']) ?></em> is being used for core caching. To change the config edit config/app.php</li>
-                        <?php else : ?>
-                            <li class="bullet problem">Your cache is NOT working. Please check the settings in config/app.php</li>
-                        <?php endif; ?>
-                        </ul>
-                    </div>
-                </div>
-                <hr>
-                <div class="row">
-                    <div class="column">
-                        <h4>Database</h4>
-                        <?php
-                        $result = $checkConnection('default');
-                        ?>
-                        <ul>
-                        <?php if ($result['connected']) : ?>
-                            <li class="bullet success">CakePHP is able to connect to the database.</li>
-                        <?php else : ?>
-                            <li class="bullet problem">CakePHP is NOT able to connect to the database.<br /><?= h($result['error']) ?></li>
-                        <?php endif; ?>
-                        </ul>
-                    </div>
-                    <div class="column">
-                        <h4>DebugKit</h4>
-                        <ul>
-                        <?php if (Plugin::isLoaded('DebugKit')) : ?>
-                            <li class="bullet success">DebugKit is loaded.</li>
-                            <?php
-                            $result = $checkConnection('debug_kit');
-                            ?>
-                            <?php if ($result['connected']) : ?>
-                                <li class="bullet success">DebugKit can connect to the database.</li>
-                            <?php else : ?>
-                                <li class="bullet problem">There are configuration problems present which need to be fixed:<br /><?= $result['error'] ?></li>
-                            <?php endif; ?>
-                        <?php else : ?>
-                            <li class="bullet problem">DebugKit is <strong>not</strong> loaded.</li>
-                        <?php endif; ?>
-                        </ul>
-                    </div>
-                </div>
-                <hr>
-                <div class="row">
-                    <div class="column links">
-                        <h3>Getting Started</h3>
-                        <a target="_blank" rel="noopener" href="https://book.cakephp.org/5/en/">CakePHP Documentation</a>
-                        <a target="_blank" rel="noopener" href="https://book.cakephp.org/5/en/tutorials-and-examples/cms/installation.html">The 20 min CMS Tutorial</a>
-                    </div>
-                </div>
-                <hr>
-                <div class="row">
-                    <div class="column links">
-                        <h3>Help and Bug Reports</h3>
-                        <a target="_blank" rel="noopener" href="https://slack-invite.cakephp.org/">Slack</a>
-                        <a target="_blank" rel="noopener" href="https://github.com/cakephp/cakephp/issues">CakePHP Issues</a>
-                        <a target="_blank" rel="noopener" href="https://discourse.cakephp.org/">CakePHP Forum</a>
-                    </div>
-                </div>
-                <hr>
-                <div class="row">
-                    <div class="column links">
-                        <h3>Docs and Downloads</h3>
-                        <a target="_blank" rel="noopener" href="https://api.cakephp.org/">CakePHP API</a>
-                        <a target="_blank" rel="noopener" href="https://bakery.cakephp.org">The Bakery</a>
-                        <a target="_blank" rel="noopener" href="https://book.cakephp.org/5/en/">CakePHP Documentation</a>
-                        <a target="_blank" rel="noopener" href="https://plugins.cakephp.org">CakePHP plugins repo</a>
-                        <a target="_blank" rel="noopener" href="https://github.com/cakephp/">CakePHP Code</a>
-                        <a target="_blank" rel="noopener" href="https://github.com/FriendsOfCake/awesome-cakephp">CakePHP Awesome List</a>
-                        <a target="_blank" rel="noopener" href="https://www.cakephp.org">CakePHP</a>
-                    </div>
-                </div>
-                <hr>
-                <div class="row">
-                    <div class="column links">
-                        <h3>Training and Certification</h3>
-                        <a target="_blank" rel="noopener" href="https://cakefoundation.org/">Cake Software Foundation</a>
-                        <a target="_blank" rel="noopener" href="https://training.cakephp.org/">CakePHP Training</a>
-                    </div>
-                </div>
-            </div>
+    <div class="feature-card">
+        <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 21V19C16 17.9391 15.5786 16.9217 14.8284 16.1716C14.0783 15.4214 13.0609 15 12 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8.5 11C10.7091 11 12.5 9.20914 12.5 7C12.5 4.79086 10.7091 3 8.5 3C6.29086 3 4.5 4.79086 4.5 7C4.5 9.20914 6.29086 11 8.5 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M20 8V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M23 11H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
-    </main>
-</body>
-</html>
+        <h3 class="feature-title">Social Login</h3>
+        <p class="feature-description">
+            Seamless integration with Google and GitHub for one-click authentication.
+        </p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h3 class="feature-title">Secure by Design</h3>
+        <p class="feature-description">
+            Built with security best practices: CSRF protection, secure password hashing, and token encryption.
+        </p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h3 class="feature-title">Token Management</h3>
+        <p class="feature-description">
+            Full support for access tokens, refresh tokens, and token rotation for enhanced security.
+        </p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 16V8C21 6.89543 20.1046 6 19 6H5C3.89543 6 3 6.89543 3 8V16C3 17.1046 3.89543 18 5 18H19C20.1046 18 21 17.1046 21 16Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <polyline points="7 10 12 13 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h3 class="feature-title">Client Management</h3>
+        <p class="feature-description">
+            Register and manage OAuth2 clients with configurable scopes and redirect URIs.
+        </p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h3 class="feature-title">Well Documented</h3>
+        <p class="feature-description">
+            Comprehensive documentation for developers, including architecture guides and API references.
+        </p>
+    </div>
+</div>
+
+<div class="tech-stack">
+    <h2 class="tech-stack-title">Built With Modern Technologies</h2>
+    <div class="tech-badges">
+        <span class="tech-badge">PHP 8.3</span>
+        <span class="tech-badge">CakePHP 5</span>
+        <span class="tech-badge">PostgreSQL</span>
+        <span class="tech-badge">OAuth 2.0</span>
+        <span class="tech-badge">OpenID Connect</span>
+        <span class="tech-badge">PHPUnit</span>
+        <span class="tech-badge">TDD</span>
+    </div>
+</div>
+
+<div class="cta-section">
+    <h2 class="cta-title">Ready to Get Started?</h2>
+    <p class="cta-description">
+        <?php if ($this->request->getAttribute('identity')): ?>
+            Manage your identity provider and OAuth2 clients
+        <?php else: ?>
+            Sign in to access the identity provider dashboard
+        <?php endif; ?>
+    </p>
+    <a href="<?= $this->Url->build(['controller' => 'Users', 'action' => $this->request->getAttribute('identity') ? 'index' : 'login']) ?>" class="cta-btn">
+        <?= $this->request->getAttribute('identity') ? 'Go to Dashboard' : 'Sign In Now' ?>
+    </a>
+</div>
